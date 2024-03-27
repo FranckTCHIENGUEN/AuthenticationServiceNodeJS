@@ -1,0 +1,47 @@
+{
+    "entryFile": "./src/server.ts",
+    "noImplicitAdditionalProperties": "throw-on-extras",
+    "controllerPathGlobs": ["./app/controllers/*controller.ts"],
+    "spec": {
+        "host": "localhost:3000",
+        "outputDirectory": "build",
+        "specVersion": 3,
+        "securityDefinitions": {
+            "Jwt": {
+                "type": "apiKey",
+                "name": "authorization",
+                "in": "header",
+                "scopes" : {
+                    "root" : "can do",
+                    "admin" : "can do",
+                    "user" : "can do"
+                }
+            }
+        },
+        "paths": {
+            "/files/uploadFile": {
+                "post": {
+                    "consumes": [
+                        "multipart/form-data"
+                    ],
+                    "parameters": [{
+                        "in": "formData",
+                        "name": "randomFileIsHere",
+                        "required": true,
+                        "type": "file"
+                    }]
+                }
+            }
+        }
+    },
+    "routes": {
+        "routesDir": "./router",
+        "basePath": "",
+        "entryFile": "./src/server.ts",
+        "authenticationModule": "./app/middleware/auth.ts"
+    },
+    "swagger": {
+        "outputDirectory": ".",
+        "entryFile": "./src/server.ts"
+    }
+}

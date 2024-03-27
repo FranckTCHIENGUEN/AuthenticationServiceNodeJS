@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
+    <data-source source="LOCAL" name="postgres@trademanagement-db.postgres.database.azure.com" uuid="7bfe0880-f55d-4028-bc81-882d9a80440a">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <imported>true</imported>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://trademanagement-db.postgres.database.azure.com:5432/postgres?ssl=true&amp;sslmode=require</jdbc-url>
+      <jdbc-additional-properties>
+        <property name="AZURE_SQL_DB_SERVER" value="/subscriptions/9959c2b7-60f1-4a70-86c4-12445314269a/resourceGroups/tradeManagement-Ressource/providers/Microsoft.DBforPostgreSQL/flexibleServers/trademanagement-db" />
+      </jdbc-additional-properties>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
+  </component>
+</project>
