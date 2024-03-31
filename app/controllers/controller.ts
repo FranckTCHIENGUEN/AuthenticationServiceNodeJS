@@ -2,9 +2,11 @@ import dotenv from "dotenv";
 import {Controller} from "tsoa";
 // import cloudinary from "cloudinary";
 import Mailer from "../../src/core/notifications/mail";
+import Sms from "../../src/core/notifications/sms/sendSms";
 // import {USER_ROLE} from "../models/role";
 import {TokenModel} from "../models/token";
 import * as stream from "stream";
+import {sendSmsData} from "../../src/core/notifications/sms/sendSms";
 
 
 
@@ -56,10 +58,10 @@ export class My_Controller extends Controller {
     public generate_otp() : number{
         const otpTable = ['0','1','2','3','4','5','6','7','8','9']
         const random = [];
-        for(let i = 0; i<4; i++){
+        for(let i = 0; i<6; i++){
          random.push(Math.floor(Math.random() * otpTable.length))
         }
-        const otp = random.join('').substring(0, 4)
+        const otp = random.join('').substring(0, 6)
         return parseInt(otp)
     }
 
@@ -79,6 +81,9 @@ export class My_Controller extends Controller {
         data ?: object
     }) : Promise<any> {
         return await Mailer.sendFromTemplate(config.to, config.subject, "", config.modelName, config.data);
+    }
+    public async sendSms (config : sendSmsData) : Promise<any> {
+        return await Sms.sendSms(config);
     }
 
     public async getUserId(token: string | undefined): Promise<any> {

@@ -1,312 +1,241 @@
-import {Body, Get, Post, Request, Route, Security, Tags} from "tsoa";
-import {AUTHORIZATION, IResponse, My_Controller} from "./controller";
+import { Body, Get, Post, Request, Route, Security, Tags } from "tsoa";
+import { AUTHORIZATION, IResponse, My_Controller } from "./controller";
 import UserType from "../types/userType";
-import bcrypt from "bcrypt"
-import jwt from "jsonwebtoken"
-import {changePasswordSchema, userCreateSchema} from "../validations/user.validation";
-import {SALT_ROUND, UserModel} from "../models/user";
-import {ResponseHandler} from "../../src/config/responseHandler";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import {changePasswordSchema, changForgotePasswordSchema, userCreateSchema} from "../validations/user.validation";
+import { SALT_ROUND, UserModel } from "../models/user";
+import { ResponseHandler } from "../../src/config/responseHandler";
 import code from "../../src/config/code";
-import {TokenModel} from "../models/token";
-import {otpModel} from "../models/otp";
-import {VERIF_TYPE} from "../types/defaults/verificationTpe";
+import { TokenModel } from "../models/token";
+import { otpModel } from "../models/otp";
+import {sendSmsData} from "../../src/core/notifications/sms/sendSms";
 
-const response = new ResponseHandler()
+const response = new ResponseHandler();
+const OTP_EXPIRATION_TIME = 300; // 5 minutes in seconds
 
 @Tags("Auth Controller")
-@Route("/")
-
+@Route("/auth")
 export class AuthController extends My_Controller {
 
     @Post('login')
     public async login(
-        @Body() body : UserType.loginFields
-    ) : Promise<IResponse> {
+        @Body() body: UserType.loginFields
+    ): Promise<IResponse> {
         try {
-            //found user
-            const foundUser = await UserModel.findFirst({where: {email: body.email},
-            })
-            if(!foundUser)
-                return response.liteResponse(code.NOT_FOUND, 'invalid login or password')
+            const foundUser = await UserModel.findFirst({ where: { email: body.email } });
+            if (!foundUser)
+                return response.liteResponse(code.NOT_FOUND, 'Invalid login or password');
 
-            //Compare password
-            const compare = bcrypt.compareSync(body.password, foundUser.password)
-            if(!compare){
-                return response.liteResponse(code.FAILURE, "invalid login or password")
-            }
-            else {
+            const compare = bcrypt.compareSync(body.password, foundUser.password);
+            if (!compare)
+                return response.liteResponse(code.FAILURE, "Invalid login or password");
 
-                let otp = this.generate_otp()
-                await otpModel.create({
-                    data: {
-                        otp: otp,
-                        expiredIn: (Math.round(new Date().getTime()/ 1000)) + 300, // expired after 5 minutes
-                        userEmail : foundUser.email
-                    }
-                });
-                let res = await this.sendMailFromTemplate({
-                    to : foundUser.email,
-                    modelName : "forgotpassword",
-                    data : {
-                        otp : otp,
-                        email: foundUser.email
-                    },
-                    subject : "OTP CODE"
-                })
-                if(res.response.status !== 200)
-                    return response.liteResponse(code.FAILURE, "error occured when sending otp, Try again !", null)
+            const otp = this.generateOTP(foundUser.email);
 
-                return response.liteResponse(code.SUCCESS, "OTP code was send to your email", { email: foundUser.email})
+            // send sms
+            await this.sendOTP(foundUser, await otp);
 
-            }  
-        }
-        catch (e){
-            return response.catchHandler(e)
+            return response.liteResponse(code.SUCCESS, "OTP code was sent to your number");
+        } catch (e) {
+            return response.catchHandler(e);
         }
     }
 
     @Post('forgot_password')
     public async forgotPassword(
-        @Body() body : UserType.forgotPasswordFields
+        @Body() body: UserType.forgotPasswordFields
     ): Promise<IResponse> {
         try {
-            //found user
-            const foundUser = await UserModel.findFirst({where: {email: body.email}})
+            const foundUser = await UserModel.findFirst({ where: { email: body.email } });
+            if (!foundUser)
+                return response.liteResponse(code.NOT_FOUND, 'Incorrect email');
 
-            if(!foundUser) {
-                return response.liteResponse(code.NOT_FOUND, 'Incorrect email')
-            } else {
+            const otp = this.generateOTP(foundUser.email);
+            await this.sendOTP(foundUser, await otp);
 
-                let otp = this.generate_otp()
-                await otpModel.create({
-                    data: {
-                        otp: otp,
-                        expiredIn: (Math.round(new Date().getTime()/ 1000)) + 300, // expired after 5 minutes
-                        userEmail : foundUser.email
-                    }
-                });
-                let res = await this.sendMailFromTemplate({
-					to : foundUser.email,
-					modelName : "forgotpassword",
-					data : {
-						otp : otp,
-                        email: foundUser.email
-					},
-					subject : "OTP CODE"
-				})
-                if(res.response.status !== 200)
-                    return response.liteResponse(code.FAILURE, "error occured when sending otp, Try again !", null)
-
-                return response.liteResponse(code.SUCCESS, "OTP code was send to your email", { email: foundUser.email})
-            }
-        }
-        catch (e){
-            return response.catchHandler(e)
+            return response.liteResponse(code.SUCCESS, "OTP code was sent to your email", { email: foundUser.email });
+        } catch (e) {
+            return response.catchHandler(e);
         }
     }
 
     @Post("verify-otp")
     public async verifyOtp(
         @Body() body: UserType.verifyOtp
-    ) : Promise<IResponse> {
-        try{
-            const foundUser: any = await UserModel.findFirst({where: {email: body.email}})
-            if(!foundUser)
-            return response.liteResponse(code.NOT_FOUND, 'User not found, Invalid email !')
+    ): Promise<IResponse> {
+        try {
+            const foundUser = await UserModel.findFirst({ where: { email: body.email } });
+            if (!foundUser)
+                return response.liteResponse(code.NOT_FOUND, 'User not found, Invalid email !');
 
-            let foundOtp = await otpModel.findFirst({
-                where:{
-                    otp: body.otp,
-                    userEmail: body.email
-                }
-            })
-            if(!foundOtp)
-                return response.liteResponse(code.NOT_FOUND, "Incorrect otp, try again !")
-    
-            //Check if otp is expired
-            if(foundOtp.expiredIn < Math.round(new Date().getTime() / 1000))
-                return response.liteResponse(code.FAILURE, "This otp is expired. Resend otp !")
+            const foundOTP = await otpModel.findFirst({ where: { otp: body.otp, userEmail: body.email } });
+            if (!foundOTP)
+                return response.liteResponse(code.NOT_FOUND, "Incorrect OTP, try again !");
 
-            if (body.verificationType == VERIF_TYPE.LOGIN){
+            if (foundOTP.expiredIn < Math.round(new Date().getTime() / 1000))
+                return response.liteResponse(code.FAILURE, "This OTP has expired. Resend OTP !");
 
-                // Create generate token
-                const jwtToken = await this.generate_token(foundUser.id, foundUser.email)
-                return response.liteResponse(code.SUCCESS, "Sucess request login", {...foundUser, token: jwtToken})
+            const user={
+                email:foundUser.email,
+               lastName:foundUser.lastName!,
+               firstName:foundUser.firstName
             }
 
-    
-            return response.liteResponse(code.SUCCESS, "Success request !", {email: foundUser.email})
-        }catch(e){
-            return response.catchHandler(e)
+            const jwtToken = await this.generateToken(foundUser.id, foundUser.email);
+            return response.liteResponse(code.SUCCESS, "Success request login", { user: user, token: jwtToken });
+        } catch (e) {
+            return response.catchHandler(e);
         }
-        
     }
 
-    @Post('resent-otp')
+    @Post('resend-otp')
     public async resendotp(
-        @Body() body : UserType.resendOtp
-    ): Promise<IResponse>{
-        try{
-            const foundUser: any = await UserModel.findFirst({where: {email: body.email}})
-            if(!foundUser)
-            return response.liteResponse(code.NOT_FOUND, 'User not found, Invalid email')
+        @Body() body: UserType.resendOtp
+    ): Promise<IResponse> {
+        try {
+            const foundUser = await UserModel.findFirst({ where: { email: body.email } });
+            if (!foundUser)
+                return response.liteResponse(code.NOT_FOUND, 'User not found, Invalid email');
 
-            let otp = this.generate_otp()
-            //delete all previous send otp wich is'nt expired
             await otpModel.deleteMany({
-                where:{
+                where: {
                     userEmail: body.email,
-                    expiredIn:{
-                        gt: Math.round(new Date().getTime()/ 1000)
-                    }
+                    expiredIn: { gt: Math.round(new Date().getTime() / 1000)}
                 }
-            })
-            const createOtp = await otpModel.create({
-                data: {
-                    otp: otp,
-                    expiredIn: (Math.round(new Date().getTime()/ 1000)) + 300, // expired after 5 minutes
-                    userEmail : body.email
-                }
-            })
-            // send mail
-            let res = await this.sendMailFromTemplate({
-                to : foundUser.email,
-                modelName : "forgotpassword",
-                data : {
-                    otp : otp,
-                    email: foundUser.email
-                },
-                subject : "OTP CODE "
-            })
+            });
 
-            if(res.response.status !== 200)
-                return response.liteResponse(code.FAILLURE, "error occured when sending otp, Try again !")
+            const otp = this.generateOTP(foundUser.email);
+            await this.sendOTP(foundUser, await otp);
 
-            return response.liteResponse(code.SUCCESS, "OTP code is resent",{otp : createOtp.otp})
-        }catch(e){
-            return response.catchHandler(e)
+            return response.liteResponse(code.SUCCESS, "OTP code is resent", { otp });
+        } catch (e) {
+            return response.catchHandler(e);
         }
     }
 
     @Post('change_password')
     @Security(AUTHORIZATION.TOKEN)
     public async changePassword(
-        @Body() body : UserType.changePasswordFields
+        @Body() body: UserType.changePasswordFields
     ): Promise<IResponse> {
         try {
-            const validate = this.validate(changePasswordSchema, body)
-            if(validate !== true)
-                return response.liteResponse(code.VALIDATION_ERROR, "Validation Error !", validate)
 
-            //found user
-            const foundUser = await UserModel.findFirst({where: {email: body.email}})
-            if(!foundUser)
-                return response.liteResponse(code.NOT_FOUND, 'User not found, Invalid email!')
-            else if( bcrypt.compareSync(body.oldPassword, foundUser.password))
-                return response.liteResponse(code.NOT_FOUND, ' Invalid password!')
+            let validate = this.validate(changePasswordSchema, body);
 
-            let update = await UserModel.update(
-                { 
-                    data: {
-                        password: bcrypt.hashSync(body.newPassword, SALT_ROUND)
-                    },
-                    where: {
-                        id: foundUser.id
-                    }
-                }
-            )
-            if(!update)
-                return response.liteResponse(code.FAILLURE, 'Something went wrong, try Again !', null);
+            if (body.oldPassword == null){
+                 validate = this.validate(changForgotePasswordSchema, body);
+            }
+            if (validate !== true)
+                return response.liteResponse(code.VALIDATION_ERROR, "Validation Error !", validate);
+
+            const foundUser = await UserModel.findFirst({ where: { email: body.email } });
+            if (!foundUser)
+                return response.liteResponse(code.NOT_FOUND, 'User not found, Invalid email!');
+
+            if (body.oldPassword != null){
+                if (!bcrypt.compareSync(body.oldPassword, foundUser.password))
+                    return response.liteResponse(code.FAILURE, 'Invalid password!');
+            }
+
+            const updatedUser = await UserModel.update({
+                data: { password: bcrypt.hashSync(body.newPassword, SALT_ROUND) },
+                where: { id: foundUser.id }
+            });
+
+            if (!updatedUser)
+                return response.liteResponse(code.FAILURE, 'Something went wrong, try Again !', null);
 
             return response.liteResponse(code.SUCCESS, "Your password is updated", null);
-         }
-        catch (e){
-            return response.catchHandler(e)
+        } catch (e) {
+            return response.catchHandler(e);
         }
     }
 
     @Post("register")
     public async register(
         @Body() body: UserType.userCreateFields
-    ): Promise<IResponse>{
+    ): Promise<IResponse> {
         try {
-            const validate = this.validate(userCreateSchema, body)
-            if(validate !== true)
-                return response.liteResponse(code.VALIDATION_ERROR, "Validation Error !", validate)
+            const validate = this.validate(userCreateSchema, body);
+            if (validate !== true)
+                return response.liteResponse(code.VALIDATION_ERROR, "Validation Error !", validate);
 
-            let userData : any = body
-            userData['password'] = await bcrypt.hash(body.password, SALT_ROUND)
+            const existingUser = await UserModel.findFirst({ where: { email: body.email } });
+            if (existingUser)
+                return response.liteResponse(code.FAILURE, "Email already exists, try with another email");
 
-            //Check if email already exist
-            console.log("Check Email...")
-            const verifyEmail = await UserModel.findFirst({where:{email : body.email}})
-            if(verifyEmail)
-                return response.liteResponse(code.FAILURE, "Email already exist, Try with another email")
-            console.log("Check Email finished")
+            const hashedPassword = await bcrypt.hash(body.password, SALT_ROUND);
+            const newUser = await UserModel.create({ data: { ...body, password: hashedPassword } });
 
-            const user = await UserModel.create({data : {
-                    ...userData
-                }})
-            if (!user)
-                return response.liteResponse(code.FAILURE, "An error occurred, on user creation. Retry later!", null)
+            if (!newUser)
+                return response.liteResponse(code.FAILURE, "An error occurred while creating the user. Retry later!", null);
 
-
-            this.sendMailFromTemplate({
-            	to : user.email,
-            	modelName : "register",
-            	data : {
-            		firstName: user.firstName,	},
-            	subject : "Created Account"
-            })
-
-            console.log("Create user Success")
-            return response.liteResponse(code.SUCCESS, "User registered with Success !", user)
-        }catch (e){
-            return response.catchHandler(e)
+            return response.liteResponse(code.SUCCESS, "User registered successfully !", newUser);
+        } catch (e) {
+            return response.catchHandler(e);
         }
     }
 
     @Get('logout')
     @Security(AUTHORIZATION.TOKEN)
     public async logout(
-        @Request() req : any
+        @Request() req: any
     ): Promise<IResponse> {
         try {
-            const token = await TokenModel.findFirst({where: {jwt : req.headers['authorization']}})
-            if(!token)
-                return response.liteResponse(code.FAILURE, "Token not found",null)
+            const authorization = req.headers['authorization'] as string;
+            const token = await TokenModel.findFirst({ where: { jwt: authorization.split(' ').pop() } });
+            if (!token)
+                return response.liteResponse(code.FAILURE, "Token not found", null);
 
-            let expirate  = Math.round((new Date().getTime() / 1000) / 2)
-            await TokenModel.update({where : {id: token.id}, data: {
-                    expireIn: expirate,
-                }})
-            return response.liteResponse(code.SUCCESS, "Logout with success !", null)
-        }catch (e){
-            return response.catchHandler(e)
+            const expiry = Math.round(new Date().getTime() / 1000) / 2;
+            await TokenModel.update({ where: { id: token.id }, data: { expireIn: expiry } });
+
+            return response.liteResponse(code.SUCCESS, "Logout successful !", null);
+        } catch (e) {
+            return response.catchHandler(e);
         }
     }
 
-    public async generate_token(user_id: string, email: string): Promise<string> {
+    public async generateToken(user_id: string, email: string): Promise<string> {
+        const payload: any = { userId: user_id, email: email };
+        const token = jwt.sign(payload, process.env.SECRET_TOKEN!, { expiresIn: '1d' });
+        const decoded: any = jwt.decode(token);
 
-        const payload : any = {
-            userId : user_id,
-            email : email
-        }
+        await TokenModel.create({
+            data: { userId: user_id, jwt: token, expireIn: decoded.exp },
+            select: { jwt: true }
+        });
 
-        const tokenc = jwt.sign(payload, <string>process.env.SECRET_TOKEN, { expiresIn: '1d'})
-        const decode: any = jwt.decode(tokenc)
+        return token;
+    }
 
-        const token = await TokenModel.create({
+    private async generateOTP(mail: string): Promise<number> {
+        // Implement OTP generation logic here
+        const otp = this.generate_otp()// Example OTP generation (6 digits)
+        const savedOtp = await otpModel.create({
             data: {
-                userId: user_id,
-                jwt: tokenc,
-                expireIn : decode.exp
-            },
-            select: {
-                jwt: true
+                otp: otp,
+                expiredIn: (Math.round(new Date().getTime() / 1000)) + OTP_EXPIRATION_TIME,
+                userEmail: mail
             }
         })
-        if (!token) throw new Error('Token generation')
-        return token.jwt
+
+        if (!savedOtp)
+            return response.liteResponse(code.FAILURE, 'Something went wrong, try Again !', null);
+
+        return otp;
+    }
+
+    private async sendOTP(user: any, otp: number): Promise<void> {
+
+        const config:sendSmsData={
+            to:user.region+user.phoneNumber,
+            from:'Digisoft',
+            text:`your otp code is : ${otp}`
+        }
+        // await this.sendSms(config);
+        console.log(`OTP sent to ${user.region}${user.phoneNumber}: ${otp}`);
+
     }
 }

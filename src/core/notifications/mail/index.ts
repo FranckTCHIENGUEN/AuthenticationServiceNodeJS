@@ -25,14 +25,15 @@ class Mailer {
             // let message = await this.normalizeModel(modelName, language, data);
             // return await this.send(to, subject, message, language);
             const mailjetConnect = Mailjet
-            .apiConnect(<string>process.env.MAILJET_PUBLIC || "39ba5a8db7daa7adae9e6ff13753bc7f",
-                        <string>process.env.MAILJET_PRIVATE || "20eac858fad0be190eee9c430c66e7c3"
+            .apiConnect(<string>process.env.MAILJET_PUBLIC || "a47c3858e13be8df5f3bfeef7b8103f0",
+                        <string>process.env.MAILJET_PRIVATE || "900cf41666567419b69c202b5b3b31fa"
             )
+            console.log(to)
             return mailjetConnect.post("send", {version: 'v3.1'}).request({
                 Messages: [
                     {
                         From: {
-                            Email: <string>process.env.SENDER_EMAIL || 'tchienguenf@gmail.com',
+                            Email: <string>process.env.SENDER_EMAIL || 'k.becker@psatechnologie.com',
                             Name: <string>process.env.SENDER_NAME || 'DIGISOFT',
                         },
                         To: this.receiver(to),
@@ -43,6 +44,7 @@ class Mailer {
                     }
                 ]
             })
+
         } catch(error){
             console.log(error);
         }
@@ -52,17 +54,19 @@ class Mailer {
 
         switch( modelName ){
             case "login":
-                return 5809773 || process.env.LOGIN_TEMPLATE;
-            case "forgotpassword":
-                return 5809773 || process.env.LOGIN_TEMPLATE;
-            case "createuser":
+                return 5831431 || process.env.LOGIN_TEMPLATE;
+            case "verification":
+                return 5833445 || process.env.LOGIN_TEMPLATE;
+            case "5831435":
                 return 5809783 || process.env.CREATE_ACOUNT_TEMPLATE;
+            case "forgotpassword":
+                return 5831440 || process.env.CREATE_ACOUNT_TEMPLATE;
             case "register" :
                 return 5809783 || process.env.REGISTER_TEMPLATE;
             case "modifyuser" :
-                return 5809781
+                return 5831433
             case "modifypass" :
-                return 5809776
+                return 5831431
             default :
                 throw new Error("Unknown modelName")
         }

@@ -100,7 +100,7 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "email": {"ref":"defaultEmail","required":true},
-            "oldPassword": {"dataType":"string","required":true},
+            "oldPassword": {"dataType":"string"},
             "newPassword": {"dataType":"string","required":true},
         },
         "additionalProperties": false,
@@ -113,6 +113,8 @@ const models: TsoaRoute.Models = {
             "lastName": {"ref":"defaultLastName"},
             "email": {"ref":"defaultEmail","required":true},
             "password": {"dataType":"string","required":true},
+            "phoneNumber": {"dataType":"string","required":true},
+            "region": {"dataType":"string","required":true},
         },
         "additionalProperties": false,
     },
@@ -158,6 +160,7 @@ export function RegisterRoutes(app: Router) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         app.put('/user/edit',
+            authenticateMiddleware([{"Jwt":[]}]),
             ...(fetchMiddlewares<RequestHandler>(UserController)),
             ...(fetchMiddlewares<RequestHandler>(UserController.prototype.edit)),
 
@@ -187,7 +190,7 @@ export function RegisterRoutes(app: Router) {
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        app.post('/login',
+        app.post('/auth/login',
             ...(fetchMiddlewares<RequestHandler>(AuthController)),
             ...(fetchMiddlewares<RequestHandler>(AuthController.prototype.login)),
 
@@ -217,7 +220,7 @@ export function RegisterRoutes(app: Router) {
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        app.post('/forgot_password',
+        app.post('/auth/forgot_password',
             ...(fetchMiddlewares<RequestHandler>(AuthController)),
             ...(fetchMiddlewares<RequestHandler>(AuthController.prototype.forgotPassword)),
 
@@ -247,7 +250,7 @@ export function RegisterRoutes(app: Router) {
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        app.post('/verify-otp',
+        app.post('/auth/verify-otp',
             ...(fetchMiddlewares<RequestHandler>(AuthController)),
             ...(fetchMiddlewares<RequestHandler>(AuthController.prototype.verifyOtp)),
 
@@ -277,7 +280,7 @@ export function RegisterRoutes(app: Router) {
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        app.post('/resent-otp',
+        app.post('/auth/resend-otp',
             ...(fetchMiddlewares<RequestHandler>(AuthController)),
             ...(fetchMiddlewares<RequestHandler>(AuthController.prototype.resendotp)),
 
@@ -307,7 +310,7 @@ export function RegisterRoutes(app: Router) {
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        app.post('/change_password',
+        app.post('/auth/change_password',
             authenticateMiddleware([{"Jwt":[]}]),
             ...(fetchMiddlewares<RequestHandler>(AuthController)),
             ...(fetchMiddlewares<RequestHandler>(AuthController.prototype.changePassword)),
@@ -338,7 +341,7 @@ export function RegisterRoutes(app: Router) {
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        app.post('/register',
+        app.post('/auth/register',
             ...(fetchMiddlewares<RequestHandler>(AuthController)),
             ...(fetchMiddlewares<RequestHandler>(AuthController.prototype.register)),
 
@@ -368,7 +371,7 @@ export function RegisterRoutes(app: Router) {
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        app.get('/logout',
+        app.get('/auth/logout',
             authenticateMiddleware([{"Jwt":[]}]),
             ...(fetchMiddlewares<RequestHandler>(AuthController)),
             ...(fetchMiddlewares<RequestHandler>(AuthController.prototype.logout)),

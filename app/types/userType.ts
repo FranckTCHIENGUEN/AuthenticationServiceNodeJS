@@ -11,6 +11,8 @@ declare namespace UserType {
         lastName ?: defaultLastName,
         email : defaultEmail,
         password: string,
+        phoneNumber: string,
+        region: string,
     }
     export interface userUpdateFields {
         firstName : defaultFisrtName,
@@ -35,7 +37,7 @@ declare namespace UserType {
 
     export interface changePasswordFields {
         email: defaultEmail,
-        oldPassword: string
+        oldPassword?: string
         newPassword: string
     }
 

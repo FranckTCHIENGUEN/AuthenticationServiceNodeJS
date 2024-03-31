@@ -4,7 +4,7 @@ import {UserModel} from "../models/user";
 import {ResponseHandler} from "../../src/config/responseHandler";
 import code from "../../src/config/code";
 import UserType from "../types/userType";
-import {userCreateSchema} from "../validations/user.validation";
+import {userCreateSchema, userUpdateSchema} from "../validations/user.validation";
 // import { PERMISSION } from "../models/permission";
 const response = new ResponseHandler()
 
@@ -28,11 +28,12 @@ export class UserController extends My_Controller {
     }
 
     @Put("edit")
+    @Security(AUTHORIZATION.TOKEN)
     public async edit(
         @Body() body: UserType.userUpdateFields
     ): Promise<IResponse>{
         try {
-            const validate = this.validate(userCreateSchema, body)
+            const validate = this.validate(userUpdateSchema, body)
             if(validate !== true)
                 return response.liteResponse(code.VALIDATION_ERROR, "Validation Error !", validate)
 
@@ -43,25 +44,31 @@ export class UserController extends My_Controller {
             if(!foundUser)
                 return response.liteResponse(code.NOT_FOUND, 'User not found, Invalid email!')
 
-            const user = await UserModel.update(
-                {where:{email: foundUser.id},
+            const userUpdate = await UserModel.update(
+                {where:{id: foundUser.id},
                 data : {
                     ...userData
                 }})
-            if (!user)
+            if (!userUpdate)
                 return response.liteResponse(code.FAILURE, "An error occurred, on user update. Retry later!", null)
 
 
-            this.sendMailFromTemplate({
-                to : user.email,
-                modelName : "modifuser",
-                data : {
-                    firstName: user.firstName,	},
-                subject : "Modify Account"
-            })
+            // this.sendMailFromTemplate({
+            //     to : user.email,
+            //     modelName : "modifuser",
+            //     data : {
+            //         firstName: user.firstName,	},
+            //     subject : "Modify Account"
+            // })
 
             console.log("Create user Success")
-            return response.liteResponse(code.SUCCESS, "User update with Success !", user)
+
+            const user={
+                email:userUpdate.email,
+                lastName:userUpdate.lastName!,
+                firstName:userUpdate.firstName
+            }
+            return response.liteResponse(code.SUCCESS, "User update with Success !", {user:user})
         }catch (e){
             return response.catchHandler(e)
         }

@@ -5,7 +5,7 @@
   "main": "src/server.ts",
   "scripts": {
     "start": "nodemon src/server.ts",
-    "pull-db": "npx prisma db push",
+    "push-db": "npx prisma db push",
     "tsoa": "tsoa spec-and-routes -c ./tsoa.json",
     "seed": "ts-node prisma/seed.ts"
   },
@@ -13,6 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@vonage/server-sdk": "^3.14.0",
     "axios": "^1.6.8",
     "bcrypt": "^5.1.1",
     "cookie-parser": "~1.4.4",

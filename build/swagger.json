@@ -145,7 +145,6 @@
 				},
 				"required": [
 					"email",
-					"oldPassword",
 					"newPassword"
 				],
 				"type": "object",
@@ -164,12 +163,20 @@
 					},
 					"password": {
 						"type": "string"
+					},
+					"phoneNumber": {
+						"type": "string"
+					},
+					"region": {
+						"type": "string"
 					}
 				},
 				"required": [
 					"firstName",
 					"email",
-					"password"
+					"password",
+					"phoneNumber",
+					"region"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -242,7 +249,11 @@
 				"tags": [
 					"User Controller"
 				],
-				"security": [],
+				"security": [
+					{
+						"Jwt": []
+					}
+				],
 				"parameters": [],
 				"requestBody": {
 					"required": true,
@@ -256,7 +267,7 @@
 				}
 			}
 		},
-		"/login": {
+		"/auth/login": {
 			"post": {
 				"operationId": "Login",
 				"responses": {
@@ -288,7 +299,7 @@
 				}
 			}
 		},
-		"/forgot_password": {
+		"/auth/forgot_password": {
 			"post": {
 				"operationId": "ForgotPassword",
 				"responses": {
@@ -320,7 +331,7 @@
 				}
 			}
 		},
-		"/verify-otp": {
+		"/auth/verify-otp": {
 			"post": {
 				"operationId": "VerifyOtp",
 				"responses": {
@@ -352,7 +363,7 @@
 				}
 			}
 		},
-		"/resent-otp": {
+		"/auth/resend-otp": {
 			"post": {
 				"operationId": "Resendotp",
 				"responses": {
@@ -384,7 +395,7 @@
 				}
 			}
 		},
-		"/change_password": {
+		"/auth/change_password": {
 			"post": {
 				"operationId": "ChangePassword",
 				"responses": {
@@ -420,7 +431,7 @@
 				}
 			}
 		},
-		"/register": {
+		"/auth/register": {
 			"post": {
 				"operationId": "Register",
 				"responses": {
@@ -452,7 +463,7 @@
 				}
 			}
 		},
-		"/logout": {
+		"/auth/logout": {
 			"get": {
 				"operationId": "Logout",
 				"responses": {

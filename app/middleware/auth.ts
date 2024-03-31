@@ -19,8 +19,8 @@ export const expressAuthentication = async (
         if (securityName === "Jwt") {
             const token = await checkAuthorization(authorization)
 
-            if (!scopes || scopes && scopes?.length < 0)
-            return Promise.resolve(`token here ${token.userId}`)
+            // if (!scopes || scopes && scopes?.length < 0)
+            // return Promise.resolve(`token here ${token.userId}`)
 
             // const permissions = token.userId.permissions.map(({permission_id}) => permission_id)
 
@@ -40,11 +40,15 @@ export const checkAuthorization = async (authorization ?: string) => {
     if (!authorization)
         throw new Middleware_Error("Token Not Found")
 
+    authorization = authorization.split(' ').pop()!;
 
     const decoded : any = jwt.decode(authorization);
     if (!decoded || decoded instanceof (JsonWebTokenError || TokenExpiredError)){
+
        throw new Middleware_Error("Incorrect token");
     }
+
+
 
     const token = await TokenModel.findFirst({where : {jwt : authorization}})
     
