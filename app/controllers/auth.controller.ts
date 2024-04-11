@@ -1,14 +1,14 @@
-import { Body, Get, Post, Request, Route, Security, Tags } from "tsoa";
-import { AUTHORIZATION, IResponse, My_Controller } from "./controller";
+import {Body, Get, Post, Request, Route, Security, Tags} from "tsoa";
+import {AUTHORIZATION, IResponse, My_Controller} from "./controller";
 import UserType from "../types/userType";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import {changePasswordSchema, changForgotePasswordSchema, userCreateSchema} from "../validations/user.validation";
-import { SALT_ROUND, UserModel } from "../models/user";
-import { ResponseHandler } from "../../src/config/responseHandler";
+import {SALT_ROUND, UserModel} from "../models/user";
+import {ResponseHandler} from "../../src/config/responseHandler";
 import code from "../../src/config/code";
-import { TokenModel } from "../models/token";
-import { otpModel } from "../models/otp";
+import {TokenModel} from "../models/token";
+import {otpModel} from "../models/otp";
 import {sendSmsData} from "../../src/core/notifications/sms/sendSms";
 
 const response = new ResponseHandler();
