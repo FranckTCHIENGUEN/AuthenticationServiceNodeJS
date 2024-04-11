@@ -38,6 +38,7 @@ export class AuthController extends My_Controller {
 
             return response.liteResponse(code.SUCCESS, "OTP code was sent to your number");
         } catch (e) {
+            console.log(e)
             return response.catchHandler(e);
         }
     }
