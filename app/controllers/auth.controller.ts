@@ -235,7 +235,7 @@ export class AuthController extends My_Controller {
             from:'Digisoft',
             text:`your otp code is : ${otp}`
         }
-        // await this.sendSms(config);
+        await this.sendSms(config);
         console.log(`OTP sent to ${user.region}${user.phoneNumber}: ${otp}`);
 
     }
